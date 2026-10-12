@@ -1,6 +1,6 @@
 package db.migration;
 
-import com.financeops.billing.PracticeDataset;
+import com.financeops.billing.persistence.seed.PracticeDataset;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 import org.springframework.core.io.ClassPathResource;

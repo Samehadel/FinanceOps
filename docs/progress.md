@@ -13,6 +13,18 @@
 
 This foundation is distinct from completion of F01's chat and model criteria.
 
+## Backend modular monolith — October 12, 2026
+
+- Organized the backend into closed authentication, billing, and shared modules with explicit Spring Modulith 2.1.1 dependency declarations. HTTP adapters, application use cases, domain calculations, and persistence implementations are separate inside each feature.
+- Exposed trusted current-user identity, a synchronous workspace-provisioning SPI, and an immutable tenant-scoped billing query facade. Other modules cannot import internal repositories, entities, controllers, or services. Future features should use the [documented module contracts](backend-architecture.md).
+- Clean Maven packaging and the source Docker build passed. Both ran the static module/layer checks despite `-DskipTests`. A temporary billing reference to an authentication repository correctly failed the build; the probe was removed and the clean build passed again. The runtime JAR contains Modulith API metadata, without ArchUnit, Modulith core, or the verification class.
+- Compared 75 live API responses before and after the refactor across Maya and Omar: profiles, dashboards, customer/invoice/transaction lists, and every invoice and transaction detail matched exactly. Recomputed all demo invoice balances with exact decimal arithmetic.
+- Rechecked anonymous access, wrong passwords, login/logout, missing CSRF, generic missing/cross-tenant 404s, ignored tenant parameters, rejected financial PATCH requests, and the due-today boundary.
+- Signup verified maximum-length names, oversized UTF-8 password rejection, server-owned role/tenant selection, normalized duplicate rejection, and complete expanded fixtures: 8 customers, 11 invoices, 19 payments, $3396.48 outstanding.
+- Concurrent signup with the same normalized email produced one 201 and one 409. The database uniqueness failure rolled back the second workspace; exactly one complete workspace remained for that account.
+- Removed only the two temporary verification accounts. Row hashes for all seven application tables matched the baseline exactly, including existing user accounts. Flyway validated all four migrations with their original checksums; no migration or re-seeding was needed. The modular backend is running through the existing Angular/Nginx proxy.
+- Angular source and API URLs/JSON fields are unchanged. This increment adds build-time structural validation, not a behavioral automated test suite. F01's AI requirements remain outstanding.
+
 ## Current feature
 
 **F01 — Read-only billing chat**

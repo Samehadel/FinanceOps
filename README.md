@@ -78,7 +78,7 @@ Maya has extra practice records: an overdue invoice, a paid invoice, and a faile
 
 ## Structure and API
 
-- `backend/`: authentication, persistence, billing calculations, and tenant-scoped reads.
+- `backend/`: a [modular monolith](docs/backend-architecture.md) with closed authentication, billing, and shared modules; separate HTTP, application, domain, and persistence layers.
 - `backend/src/main/resources/db/migration/`: versioned schema and fictional financial fixtures.
 - `frontend/`: standalone Angular components, route protection, and responsive screens.
 - `compose.yaml`: PostgreSQL, backend, and Angular/Nginx containers.
@@ -101,6 +101,8 @@ Maya has extra practice records: an overdue invoice, a paid invoice, and a faile
 Spring Security uses an HttpOnly session cookie, session fixation protection, and SPA CSRF handling. Angular sends the raw `XSRF-TOKEN` cookie as `X-XSRF-TOKEN` automatically on relative unsafe requests. For manual API clients use the cookie value, not the masked token in the `/csrf` JSON response. Refresh CSRF after authentication or logout. Anonymous reads return 401; invalid/missing CSRF returns 403; absent and unauthorized records both return the same 404. Tenant scope derives from the stored authenticated user. Financial endpoints expose GET only; frontend route guards improve navigation but backend authorization controls access.
 
 Dependency choices: Spring Boot 4.1.1 ([official requirements](https://docs.spring.io/spring-boot/system-requirements.html)), Angular/CLI 22.2.2 and TypeScript 6.0.3 ([Angular compatibility](https://angular.dev/reference/versions)), PostgreSQL 18.6 ([release policy](https://www.postgresql.org/support/versioning/)). Maven manages backend transitive versions; `package-lock.json` locks frontend dependencies.
+
+Backend module boundaries are enforced during `mvn -f backend/pom.xml package -DskipTests` using Spring Modulith 2.1.1 and a build-time architecture checker. Cycles, access to another module's internals, and application/controller dependencies on database adapters fail the build. See [Backend architecture](docs/backend-architecture.md) for ownership, public contracts, transactions, and the extension path for future features.
 
 ## Next learning step
 
