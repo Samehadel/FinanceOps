@@ -9,12 +9,15 @@ FinanceOps runs as one Spring Boot application, one deployable JAR, and one Post
 | `auth` | Accounts, session authentication, signup orchestration | `auth :: identity` (`CurrentUser`, `UserProfile`); `auth :: provisioning` (`WorkspaceProvisioner` SPI) | `app_user` |
 | `billing` | Workspaces, customers, invoices, payments, evidence, exact balances | `billing :: queries` (`BillingQueries`, immutable `BillingFacts`) | `tenant`, `customer`, `invoice`, `invoice_line`, `payment`, `payment_event` |
 | `shared` | Error vocabulary, HTTP error mapping, health endpoint | `shared :: errors` | None |
+| `chat` | Text conversations and direct OpenAI calls | None | None |
 
 ```mermaid
 flowchart LR
     billing[Billing] -->|identity and provisioning contracts| auth[Authentication]
     billing -->|errors| shared[Shared]
     auth -->|errors| shared
+    chat[AI Chat] -->|identity| auth
+    chat -->|errors| shared
 ```
 
 Modules are closed. `package-info.java` declares allowed dependencies and named interfaces. Public Java visibility inside a module does not make a class part of its public module API. Other modules cannot import its controllers, internal services, repositories, JPA entities, or security implementation.
@@ -71,8 +74,8 @@ The `verify-architecture` Maven execution runs after verification sources compil
 
 The approach follows the official [Spring Modulith module and named-interface model](https://docs.spring.io/spring-modulith/reference/fundamentals.html) and [module verification rules](https://docs.spring.io/spring-modulith/reference/verification.html).
 
-## Next feature
+## AI chat
 
-A future chat module can declare dependencies on `auth :: identity`, `billing :: queries`, and `shared :: errors`, then inject `CurrentUser` and `BillingQueries`. It receives immutable authorized facts without database or HTTP coupling. Billing queries require an authenticated security context; background work would need a separately designed trusted identity mechanism.
+The closed `chat` module depends on `auth :: identity` and `shared :: errors`. Its single `POST /api/chat` controller calls `ChatService`, which verifies trusted identity, validates bounded user/assistant history, and calls the injected official `OpenAIClient`. A lazy configuration bean permits normal billing startup without a configured API key. Provider failures map to generic recoverable 503 responses. Existing session authentication and CSRF handling protect the endpoint.
 
-AI, chat controllers, model providers, and payment mutations are not implemented by this refactor. Angular continues to use the existing API URLs and JSON fields. Local startup remains `docker compose up --build -d`.
+Chat registers no tools and reads no billing records. Its system instructions explain the practice billing rules and its lack of record access. Future record-grounded chat can consume `billing :: queries` through an explicitly declared module dependency, without importing repositories. Local startup remains `docker compose up --build -d`; configure `OPENAI_API_KEY` and optionally `OPENAI_MODEL` in the backend environment to enable responses.

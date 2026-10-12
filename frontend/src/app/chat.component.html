@@ -1,0 +1,120 @@
+<section class="chat-shell" aria-label="FinanceOps AI chat">
+  <div class="chat-toolbar">
+    <div class="assistant-identity">
+      <span class="assistant-mark" aria-hidden="true">✦</span>
+      <div>
+        <strong>FinanceOps assistant</strong
+        ><small>A clearer view of billing</small>
+      </div>
+    </div>
+    <span class="chat-mode"
+      ><span aria-hidden="true"></span> Text conversation</span
+    >
+  </div>
+
+  <div
+    class="chat-transcript"
+    #transcript
+    role="log"
+    aria-label="Conversation"
+    aria-live="polite"
+    aria-relevant="additions"
+    [attr.aria-busy]="sending()"
+  >
+    @if (messages().length === 0) {
+      <div class="chat-welcome">
+        <span class="welcome-mark" aria-hidden="true">✦</span>
+        <p class="eyebrow">A LITTLE HELP, RIGHT HERE</p>
+        <h2>Make sense of your<br />billing questions.</h2>
+        <p class="welcome-copy">
+          From payment statuses to a simple balance breakdown.<br />Ask a
+          question, and we’ll work through it together.
+        </p>
+        <p class="context-note">
+          I can explain the details you share here. I don’t have access to your
+          workspace records.
+        </p>
+      </div>
+    }
+    @for (message of messages(); track $index) {
+      <article
+        class="chat-message"
+        [class.user-message]="message.role === 'user'"
+      >
+        <span class="message-avatar" aria-hidden="true">{{
+          message.role === "user" ? "You" : "✦"
+        }}</span>
+        <div class="message-body">
+          <p class="message-author">
+            {{ message.role === "user" ? "You" : "FinanceOps assistant" }}
+          </p>
+          <div class="message-text">{{ message.content }}</div>
+        </div>
+      </article>
+    }
+    @if (sending()) {
+      <div class="chat-message thinking" role="status">
+        <span class="message-avatar" aria-hidden="true">✦</span>
+        <div class="message-body">
+          <p class="message-author">FinanceOps assistant</p>
+          <div class="thinking-dots">
+            <span></span><span></span><span></span
+            ><small>Thinking through your question…</small>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="composer-area">
+    @if (error()) {
+      <div class="error chat-error" role="alert">
+        {{ error() }} Your question is saved below.
+      </div>
+    }
+    <form class="chat-composer" (ngSubmit)="submit()">
+      <label class="sr-only" for="chat-question">Your billing question</label>
+      <textarea
+        #composer
+        id="chat-question"
+        name="question"
+        rows="2"
+        maxlength="4000"
+        placeholder="Ask a billing question…"
+        [ngModel]="draft()"
+        (ngModelChange)="draft.set($event)"
+        (keydown)="onKeydown($event)"
+        [disabled]="sending()"
+        aria-describedby="composer-help"
+      ></textarea>
+      <button
+        type="submit"
+        class="send-button"
+        aria-label="Send message"
+        [disabled]="sending() || !draft().trim()"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 19V5m-6 6 6-6 6 6" />
+        </svg>
+      </button>
+    </form>
+    <div class="composer-footnote" id="composer-help">
+      <span>Enter to send · Shift + Enter for a new line</span
+      ><span>{{ draft().length }} / 4,000</span>
+    </div>
+    <p class="chat-disclaimer">
+      AI can make mistakes. Check amounts against your billing records. This
+      conversation clears when you leave this page.
+    </p>
+  </div>
+</section>

@@ -5,7 +5,7 @@ import {
   HttpParams,
 } from "@angular/common/http";
 import { firstValueFrom } from "rxjs";
-import { Profile } from "./models";
+import { ChatMessage, ChatResponse, Profile } from "./models";
 
 @Injectable({ providedIn: "root" })
 export class ApiService {
@@ -14,6 +14,13 @@ export class ApiService {
 
   get<T>(path: string): Promise<T> {
     return firstValueFrom(this.http.get<T>("/api" + path));
+  }
+
+  async chat(messages: ChatMessage[]): Promise<ChatResponse> {
+    await this.get("/auth/csrf");
+    return firstValueFrom(
+      this.http.post<ChatResponse>("/api/chat", { messages }),
+    );
   }
 
   async restore(): Promise<boolean> {

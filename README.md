@@ -1,6 +1,6 @@
 # FinanceOps Desk
 
-A local learning app built with Spring Boot, Spring Security, Spring Data JPA, PostgreSQL, and Angular. It works without an AI provider or API key.
+A local learning app built with Spring Boot, Spring Security, Spring Data JPA, PostgreSQL, and Angular. Billing works without an API key; the optional AI assistant uses OpenAI.
 
 ## Run with Docker
 
@@ -71,6 +71,15 @@ No automated test suite is included, following the learning scope. Repeatable ma
 - Transactions: settled, pending, failed, recorded settlement dates, and event history.
 - Customer directory and per-customer outstanding totals.
 - Tenant isolation between Maya, Omar, and newly created accounts.
+- Text-only conversations with the AI assistant, opened from the sparkle icon in the main header.
+
+### Configure AI chat
+
+Set `OPENAI_API_KEY` in the backend environment and restart the backend. For Docker, add it to the ignored `.env` file and run `docker compose up --build -d`. For a direct Maven launch, export it in that terminal before `mvn -f backend/pom.xml spring-boot:run`. The key is never sent to the frontend.
+
+`OPENAI_MODEL` defaults to `gpt-5.4-nano`, an inexpensive model with function calling support ([official model details](https://developers.openai.com/api/docs/models/gpt-5.4-nano)). Chat uses the official OpenAI Java SDK with low reasoning effort, a 2,048-token completion limit, a 45-second timeout, and no automatic retries. No tools are registered or called. Each submission makes one direct Chat Completions call with storage disabled.
+
+The assistant explains billing concepts and details supplied in the conversation. It cannot retrieve workspace records or execute financial actions. Conversations live only in the page and clear on navigation or reload. The latest ten complete turns accompany each question; requests are limited to 21 messages, 8,000 characters per message, and 48,000 characters total. The UI limits each question to 4,000 characters. Missing configuration and provider failures return a recoverable 503 without exposing provider details.
 
 All amounts are USD. Only **SETTLED** payments reduce balances. Backend calculations use `BigDecimal` and PostgreSQL `numeric(14,2)`. The reference date is fixed at **2026-10-12**, matching the F01 fixtures. A due date equal to the reference date is not overdue. Missing settlement dates remain unknown.
 
@@ -97,6 +106,7 @@ Maya has extra practice records: an overdue invoice, a paid invoice, and a faile
 | GET | /api/invoices/{id} | Invoice, line items, payments, and events |
 | GET | /api/transactions | Authorized payment records and events |
 | GET | /api/transactions/{id} | Authorized payment evidence |
+| POST | /api/chat | Authenticated, CSRF-protected text chat: `{ "messages": [{ "role": "user", "content": "…" }] }` → `{ "reply": "…" }` |
 
 Spring Security uses an HttpOnly session cookie, session fixation protection, and SPA CSRF handling. Angular sends the raw `XSRF-TOKEN` cookie as `X-XSRF-TOKEN` automatically on relative unsafe requests. For manual API clients use the cookie value, not the masked token in the `/csrf` JSON response. Refresh CSRF after authentication or logout. Anonymous reads return 401; invalid/missing CSRF returns 403; absent and unauthorized records both return the same 404. Tenant scope derives from the stored authenticated user. Financial endpoints expose GET only; frontend route guards improve navigation but backend authorization controls access.
 
@@ -106,4 +116,4 @@ Backend module boundaries are enforced during `mvn -f backend/pom.xml package -D
 
 ## Next learning step
 
-This is the non-AI foundation for F01. Chat, real model calls, response validation, model timeouts, and injection exercises remain unimplemented. F01 is not marked complete. No payment provider, refund execution, policy retrieval, or cloud deployment is included.
+The text chat foundation is implemented. F01's record-grounded answers, tools, financial response validation, and injection exercises remain future work, so F01 is not marked complete. No payment provider, refund execution, policy retrieval, or cloud deployment is included.

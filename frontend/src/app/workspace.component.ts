@@ -9,6 +9,7 @@ import {
 } from "@angular/router";
 import { ApiService, errorMessage } from "./api.service";
 import { Customer, Dashboard, Invoice, Payment } from "./models";
+import { ChatComponent } from "./chat.component";
 
 @Component({
   selector: "app-workspace",
@@ -19,6 +20,7 @@ import { Customer, Dashboard, Invoice, Payment } from "./models";
     FormsModule,
     RouterLink,
     RouterLinkActive,
+    ChatComponent,
   ],
   templateUrl: "./workspace.component.html",
 })
@@ -52,7 +54,9 @@ export class WorkspaceComponent {
       ? "Invoice details"
       : this.view === "account"
         ? "Your account"
-        : this.view;
+        : this.view === "chat"
+          ? "AI assistant"
+          : this.view;
   }
 
   filteredInvoices(): Invoice[] {
@@ -85,6 +89,10 @@ export class WorkspaceComponent {
   }
 
   async load(): Promise<void> {
+    if (this.view === "chat") {
+      this.loading.set(false);
+      return;
+    }
     this.loading.set(true);
     this.error.set("");
     try {

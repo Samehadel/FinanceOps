@@ -434,6 +434,27 @@ nav a:hover {
 .topbar-tag {
   font-size: 10px;
 }
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.ai-header-link {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  border: 1px solid #deebe2;
+  color: var(--green);
+  background: #f5faf7;
+}
+.ai-header-link:hover,
+.ai-header-link.active {
+  background: #eaf4ef;
+  border-color: #b9d6c5;
+  text-decoration: none;
+}
 .topbar-tag span {
   margin: 0 10px;
   color: #a1b7a8;

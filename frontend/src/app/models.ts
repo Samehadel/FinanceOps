@@ -5,6 +5,13 @@ export interface Profile {
   tenantId: string;
   role: string;
 }
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+export interface ChatResponse {
+  reply: string;
+}
 export interface Dashboard {
   workspace: string;
   referenceDate: string;

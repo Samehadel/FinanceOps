@@ -15,14 +15,19 @@ const authenticated: CanActivateFn = async () => {
 export const routes: Routes = [
   { path: "login", component: AuthComponent },
   { path: "signup", component: AuthComponent, data: { signup: true } },
-  ...["overview", "invoices", "transactions", "customers", "account"].map(
-    (path) => ({
-      path,
-      component: WorkspaceComponent,
-      canActivate: [authenticated],
-      data: { view: path },
-    }),
-  ),
+  ...[
+    "overview",
+    "invoices",
+    "transactions",
+    "customers",
+    "account",
+    "chat",
+  ].map((path) => ({
+    path,
+    component: WorkspaceComponent,
+    canActivate: [authenticated],
+    data: { view: path },
+  })),
   {
     path: "invoices/:id",
     component: WorkspaceComponent,

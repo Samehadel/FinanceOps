@@ -21,6 +21,8 @@ services:
       DB_URL: jdbc:postgresql://db:5432/financeops
       DB_PASSWORD: ${DB_PASSWORD:-local-practice-only}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-Practice123!}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-nano}
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
