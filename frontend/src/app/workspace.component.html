@@ -1,0 +1,536 @@
+<div class="workspace">
+  <aside class="sidebar">
+    <a class="brand" routerLink="/overview"
+      ><span class="brand-mark">F</span> FinanceOps</a
+    ><span class="desk-label">OPERATIONS DESK</span>
+    <p class="nav-caption">WORKSPACE</p>
+    <nav aria-label="Main navigation">
+      @for (item of nav; track item.path) {
+        <a [routerLink]="'/' + item.path" routerLinkActive="active"
+          ><span aria-hidden="true">{{ item.icon }}</span
+          >{{ item.label }}</a
+        >
+      }
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="practice-note">
+        <span class="live-dot"></span> Practice mode
+        <p>Fictional records, real understanding.</p>
+      </div>
+      <a class="user-link" routerLink="/account" aria-label="Your account"
+        ><span class="avatar">{{ api.profile()?.name?.charAt(0) }}</span
+        ><span
+          ><strong>{{ api.profile()?.name }}</strong
+          ><small>Support employee</small></span
+        ></a
+      ><button class="logout" (click)="logout()">
+        Sign out <span aria-hidden="true">↗</span>
+      </button>
+    </div>
+  </aside>
+  <main class="main-panel">
+    <header class="topbar">
+      <span
+        >Workspace <span class="crumb">/ {{ title | titlecase }}</span></span
+      ><span class="topbar-tag">USD <span>•</span> Local sandbox</span>
+    </header>
+    <div class="page-content">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">
+            {{ dashboard()?.workspace || "FINANCE OPERATIONS" }}
+          </p>
+          <h1>{{ title | titlecase }}</h1>
+          <p class="muted">
+            @switch (view) {
+              @case ("overview") {
+                Your billing workspace, at a glance.
+              }
+              @case ("invoices") {
+                Explore charges, payments, and outstanding balances.
+              }
+              @case ("transactions") {
+                Follow every payment from pending to settled.
+              }
+              @case ("customers") {
+                The customers behind your billing records.
+              }
+              @case ("detail") {
+                An exact breakdown, backed by your financial records.
+              }
+              @default {
+                Your identity and workspace access.
+              }
+            }
+          </p>
+        </div>
+        <span class="reference-badge"
+          >As of {{ dashboard()?.referenceDate | date: "MMM d, y" }}</span
+        >
+      </div>
+      @if (error()) {
+        <div class="error" role="alert">
+          {{ error() }}
+          <button class="text-button" (click)="load()">Try again</button>
+        </div>
+      }
+      @if (loading()) {
+        <div class="loading" role="status">Loading your workspace…</div>
+      } @else if (!error()) {
+        @if (view === "overview") {
+          @if (dashboard(); as d) {
+            <div class="stats-grid">
+              <article class="stat accent-stat">
+                <span>Total outstanding</span
+                ><strong>{{ d.outstanding | currency }}</strong
+                ><small
+                  >Across {{ d.invoiceCount }}
+                  {{ d.invoiceCount === 1 ? "invoice" : "invoices" }}
+                  <span aria-hidden="true">↗</span></small
+                >
+              </article>
+              <article class="stat">
+                <span>Settled payments</span
+                ><strong>{{ d.settled | currency }}</strong
+                ><small>Confirmed and allocated</small>
+              </article>
+              <article class="stat">
+                <span>Pending payments</span
+                ><strong>{{ d.pending | currency }}</strong
+                ><small>Not yet deducted from balances</small>
+              </article>
+              <article class="stat">
+                <span>Overdue balance</span
+                ><strong>{{ d.overdue | currency }}</strong
+                ><small>Past due at the reference date</small>
+              </article>
+            </div>
+            <div class="overview-strip">
+              <div>
+                <span class="strip-icon" aria-hidden="true">◎</span
+                ><strong
+                  >{{ d.customerCount }}
+                  {{ d.customerCount === 1 ? "customer" : "customers" }}</strong
+                ><span class="muted">in this workspace</span>
+              </div>
+              <div>
+                <strong>{{ d.invoiced | currency }}</strong
+                ><span class="muted">total invoiced</span>
+              </div>
+              <a routerLink="/customers">View customers →</a>
+            </div>
+          }
+        }
+        @if (view === "overview" || view === "invoices") {
+          <section class="card">
+            <div class="card-heading">
+              <div>
+                <h2>
+                  {{ view === "overview" ? "Recent invoices" : "All invoices" }}
+                </h2>
+                <p class="muted">
+                  Only settled payments reduce outstanding balances.
+                </p>
+              </div>
+              @if (view === "overview") {
+                <a routerLink="/invoices">View all →</a>
+              }
+              <span class="count-label">{{ invoices().length }} records</span>
+            </div>
+            @if (view === "invoices") {
+              <div class="filters">
+                <input
+                  aria-label="Search invoices"
+                  placeholder="Search invoice or customer…"
+                  [ngModel]="query()"
+                  (ngModelChange)="query.set($event)"
+                /><select
+                  aria-label="Invoice status"
+                  [ngModel]="status()"
+                  (ngModelChange)="status.set($event)"
+                >
+                  <option value="ALL">All statuses</option>
+                  <option>OPEN</option>
+                  <option>OVERDUE</option>
+                  <option>PAID</option>
+                </select>
+              </div>
+            }
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Invoice</th>
+                    <th>Customer</th>
+                    <th>Due date</th>
+                    <th>Status</th>
+                    <th class="numeric">Total</th>
+                    <th class="numeric">Outstanding</th>
+                    <th><span class="sr-only">Details</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (invoice of filteredInvoices(); track invoice.id) {
+                    <tr>
+                      <td>
+                        <a
+                          class="record-link"
+                          [routerLink]="['/invoices', invoice.id]"
+                          >{{ invoice.id }}</a
+                        >
+                      </td>
+                      <td>{{ invoice.customerName }}</td>
+                      <td>{{ invoice.dueOn | date: "MMM d, y" }}</td>
+                      <td>
+                        <span
+                          class="status"
+                          [attr.data-status]="invoice.status"
+                          >{{ invoice.status | titlecase }}</span
+                        >
+                      </td>
+                      <td class="numeric">{{ invoice.total | currency }}</td>
+                      <td class="numeric strong">
+                        {{ invoice.outstanding | currency }}
+                      </td>
+                      <td>
+                        <a
+                          [routerLink]="['/invoices', invoice.id]"
+                          [attr.aria-label]="'Open ' + invoice.id"
+                          >↗</a
+                        >
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="7" class="empty">
+                        No invoices match your search.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+          @if (view === "overview") {
+            <div class="info-note">
+              <span aria-hidden="true">ⓘ</span>
+              <div>
+                <strong>A balance you can trust</strong>
+                <p>
+                  Pending and failed payments remain unconfirmed. Settlement
+                  dates are shown only when recorded.
+                </p>
+              </div>
+            </div>
+          }
+        }
+        @if (view === "transactions") {
+          <section class="card">
+            <div class="card-heading">
+              <div>
+                <h2>Payment activity</h2>
+                <p class="muted">
+                  Local simulated transactions with their recorded events.
+                </p>
+              </div>
+              <span class="count-label">{{ payments().length }} records</span>
+            </div>
+            <div class="filters">
+              <input
+                aria-label="Search transactions"
+                placeholder="Search payment, invoice, or customer…"
+                [ngModel]="query()"
+                (ngModelChange)="query.set($event)"
+              /><select
+                aria-label="Payment status"
+                [ngModel]="status()"
+                (ngModelChange)="status.set($event)"
+              >
+                <option value="ALL">All statuses</option>
+                <option>SETTLED</option>
+                <option>PENDING</option>
+                <option>FAILED</option>
+              </select>
+            </div>
+            <div class="payment-list">
+              @for (payment of filteredPayments(); track payment.id) {
+                <article class="payment-row">
+                  <div class="payment-summary">
+                    <div>
+                      <strong>{{ payment.id }}</strong>
+                      <p>{{ payment.customerName }} · {{ payment.method }}</p>
+                      <a [routerLink]="['/invoices', payment.invoiceId]">{{
+                        payment.invoiceId
+                      }}</a>
+                    </div>
+                    <div class="payment-value">
+                      <strong>{{ payment.amount | currency }}</strong
+                      ><span
+                        class="status"
+                        [attr.data-status]="payment.status"
+                        >{{ payment.status | titlecase }}</span
+                      >
+                    </div>
+                  </div>
+                  <details>
+                    <summary>
+                      Recorded {{ payment.recordedOn | date: "MMM d, y" }} ·
+                      View event history
+                    </summary>
+                    <p>
+                      Settled on:
+                      {{
+                        payment.settledOn
+                          ? (payment.settledOn | date: "MMM d, y")
+                          : "Unknown / not settled"
+                      }}
+                    </p>
+                    @for (event of payment.events; track event.id) {
+                      <p class="event">
+                        <code>{{ event.id }}</code> ·
+                        {{ event.occurredOn | date: "MMM d, y" }} ·
+                        {{ event.description }}
+                      </p>
+                    } @empty {
+                      <p>No events recorded.</p>
+                    }
+                  </details>
+                </article>
+              } @empty {
+                <p class="empty">No transactions match your search.</p>
+              }
+            </div>
+          </section>
+        }
+        @if (view === "customers") {
+          <section class="card">
+            <div class="card-heading">
+              <div>
+                <h2>Customer directory</h2>
+                <p class="muted">
+                  Visible only within your authorized workspace.
+                </p>
+              </div>
+              <span class="count-label"
+                >{{ customers().length }} customers</span
+              >
+            </div>
+            <div class="filters">
+              <input
+                aria-label="Search customers"
+                placeholder="Search customer or email…"
+                [ngModel]="query()"
+                (ngModelChange)="query.set($event)"
+              />
+            </div>
+            <div class="customer-grid">
+              @for (customer of filteredCustomers(); track customer.id) {
+                <article class="customer-card">
+                  <span class="customer-avatar">{{
+                    customer.name.charAt(0)
+                  }}</span>
+                  <h3>{{ customer.name }}</h3>
+                  <p class="muted">{{ customer.email }}</p>
+                  <code>{{ customer.id }}</code>
+                  <div class="customer-meta">
+                    <span
+                      >{{ customer.invoiceCount }}
+                      {{
+                        customer.invoiceCount === 1 ? "invoice" : "invoices"
+                      }}</span
+                    ><strong
+                      >{{ customer.outstanding | currency
+                      }}<small>outstanding</small></strong
+                    >
+                  </div>
+                </article>
+              } @empty {
+                <p class="empty">No customers match your search.</p>
+              }
+            </div>
+          </section>
+        }
+        @if (view === "detail") {
+          @if (detail(); as invoice) {
+            <a class="back-link" routerLink="/invoices">← Back to invoices</a>
+            <div class="detail-grid">
+              <section class="card invoice-document">
+                <div class="card-heading">
+                  <div>
+                    <p class="eyebrow">INVOICE</p>
+                    <h2>{{ invoice.id }}</h2>
+                  </div>
+                  <span class="status" [attr.data-status]="invoice.status">{{
+                    invoice.status | titlecase
+                  }}</span>
+                </div>
+                <div class="invoice-parties">
+                  <div>
+                    <small class="muted">BILL TO</small>
+                    <h3>{{ invoice.customerName }}</h3>
+                    <p>{{ invoice.customerEmail }}</p>
+                    <code>{{ invoice.customerId }}</code>
+                  </div>
+                  <div>
+                    <p>
+                      Issued
+                      <strong>{{ invoice.issuedOn | date: "MMM d, y" }}</strong>
+                    </p>
+                    <p>
+                      Due
+                      <strong>{{ invoice.dueOn | date: "MMM d, y" }}</strong>
+                    </p>
+                    <p>
+                      Currency <strong>{{ invoice.currency }}</strong>
+                    </p>
+                  </div>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Description</th>
+                        <th class="numeric">Qty</th>
+                        <th class="numeric">Unit price</th>
+                        <th class="numeric">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (line of invoice.lines; track $index) {
+                        <tr>
+                          <td>{{ line.description }}</td>
+                          <td class="numeric">{{ line.quantity }}</td>
+                          <td class="numeric">
+                            {{ line.unitPrice | currency }}
+                          </td>
+                          <td class="numeric">{{ line.amount | currency }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                <div class="invoice-totals">
+                  <p>
+                    <span>Invoice total</span
+                    ><strong>{{ invoice.total | currency }}</strong>
+                  </p>
+                  <p>
+                    <span>Settled payments</span
+                    ><strong>− {{ invoice.settled | currency }}</strong>
+                  </p>
+                  <p class="balance">
+                    <span>Outstanding</span
+                    ><strong>{{ invoice.outstanding | currency }}</strong>
+                  </p>
+                </div>
+              </section>
+              <aside class="card balance-card">
+                <p class="eyebrow">BALANCE EXPLAINED</p>
+                <h2>{{ invoice.outstanding | currency }}</h2>
+                <p>
+                  {{ invoice.total | currency }} invoiced minus
+                  {{ invoice.settled | currency }} settled.
+                </p>
+                <hr />
+                <strong>{{ invoice.pending | currency }} pending</strong>
+                <p class="muted">
+                  Pending payments do not reduce this balance. Future settlement
+                  timing is unknown.
+                </p>
+                <span
+                  class="status"
+                  [attr.data-status]="invoice.overdue ? 'OVERDUE' : 'OPEN'"
+                  >{{ invoice.overdue ? "Past due" : "Not overdue" }} as of
+                  {{ dashboard()?.referenceDate | date: "MMM d" }}</span
+                >
+              </aside>
+            </div>
+            <section class="card">
+              <div class="card-heading">
+                <div>
+                  <h2>Associated payments</h2>
+                  <p class="muted">Evidence for this invoice’s balance.</p>
+                </div>
+              </div>
+              <div class="payment-list">
+                @for (payment of invoice.payments; track payment.id) {
+                  <article class="payment-row">
+                    <div class="payment-summary">
+                      <div>
+                        <strong>{{ payment.id }}</strong>
+                        <p>
+                          {{ payment.method }} ·
+                          {{ payment.recordedOn | date: "MMM d, y" }}
+                        </p>
+                      </div>
+                      <div class="payment-value">
+                        <strong>{{ payment.amount | currency }}</strong
+                        ><span
+                          class="status"
+                          [attr.data-status]="payment.status"
+                          >{{ payment.status | titlecase }}</span
+                        >
+                      </div>
+                    </div>
+                    <details>
+                      <summary>View settlement and events</summary>
+                      <p>
+                        Settled on:
+                        {{
+                          payment.settledOn
+                            ? (payment.settledOn | date: "MMM d, y")
+                            : "Unknown / not settled"
+                        }}
+                      </p>
+                      @for (event of payment.events; track event.id) {
+                        <p class="event">
+                          <code>{{ event.id }}</code> ·
+                          {{ event.occurredOn | date: "MMM d, y" }} ·
+                          {{ event.description }}
+                        </p>
+                      }
+                    </details>
+                  </article>
+                } @empty {
+                  <p class="empty">
+                    No payments recorded. The full invoice amount remains
+                    outstanding.
+                  </p>
+                }
+              </div>
+            </section>
+          }
+        }
+        @if (view === "account") {
+          <section class="card account-card">
+            <span class="avatar large">{{
+              api.profile()?.name?.charAt(0)
+            }}</span>
+            <h2>{{ api.profile()?.name }}</h2>
+            <p class="muted">{{ api.profile()?.email }}</p>
+            <dl>
+              <dt>Role</dt>
+              <dd>Support employee</dd>
+              <dt>Workspace</dt>
+              <dd>{{ dashboard()?.workspace }}</dd>
+              <dt>Tenant ID</dt>
+              <dd>
+                <code>{{ api.profile()?.tenantId }}</code>
+              </dd>
+              <dt>User ID</dt>
+              <dd>
+                <code>{{ api.profile()?.id }}</code>
+              </dd>
+              <dt>Access</dt>
+              <dd>Read-only billing records in this workspace</dd>
+            </dl>
+          </section>
+        }
+      }
+      <footer class="page-footer">
+        <span>FinanceOps Desk</span
+        ><span>Practice data · Financial calculations by the backend</span>
+      </footer>
+    </div>
+  </main>
+</div>

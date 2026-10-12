@@ -1,0 +1,109 @@
+<main class="auth-layout">
+  <section class="auth-story">
+    <a class="brand" routerLink="/"
+      ><span class="brand-mark">F</span> FinanceOps
+      <span class="brand-light">Desk</span></a
+    >
+    <div>
+      <p class="eyebrow">A CLEARER VIEW OF BILLING</p>
+      <h1>Every record.<br />One clear picture.</h1>
+      <p class="auth-description">
+        Explore invoices, follow payments, and understand what’s outstanding in
+        your finance workspace.
+      </p>
+      <div class="preview-card">
+        <span class="eyebrow">CEDAR LABS · INV-A101</span>
+        <div class="preview-amount">$50.00 <span>outstanding</span></div>
+        <div class="mini-bar"><span></span></div>
+        <div class="preview-foot">
+          <span>$70.00 settled</span><span>$120.00 invoiced</span>
+        </div>
+      </div>
+    </div>
+    <p class="auth-footnote">
+      Fictional data. Practical learning. No real money movements.
+    </p>
+  </section>
+  <section class="auth-form-panel">
+    <div class="auth-form-wrap">
+      <span class="pill">LOCAL PRACTICE WORKSPACE</span>
+      <h2>{{ signup ? "Start your workspace" : "Welcome back" }}</h2>
+      <p class="muted">
+        {{
+          signup
+            ? "Create an account with your own isolated sample records."
+            : "Sign in to explore your billing records."
+        }}
+      </p>
+      <form (ngSubmit)="submit()" #form="ngForm">
+        @if (signup) {
+          <label for="name">Your name</label
+          ><input
+            id="name"
+            name="name"
+            [(ngModel)]="name"
+            required
+            maxlength="100"
+            autocomplete="name"
+            placeholder="Alex Morgan"
+          />
+        }
+        <label for="email">Email address</label
+        ><input
+          id="email"
+          name="email"
+          type="email"
+          [(ngModel)]="email"
+          required
+          email
+          maxlength="254"
+          autocomplete="username"
+          placeholder="you@example.com"
+        />
+        <label for="password">Password</label
+        ><input
+          id="password"
+          name="password"
+          type="password"
+          [(ngModel)]="password"
+          required
+          [minlength]="signup ? 10 : 1"
+          maxlength="64"
+          [autocomplete]="signup ? 'new-password' : 'current-password'"
+          placeholder="Enter your password"
+        />
+        @if (signup) {
+          <small class="muted">Use 10–64 characters.</small>
+        }
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+        <button
+          class="primary full"
+          type="submit"
+          [disabled]="form.invalid || busy()"
+        >
+          {{ busy() ? "Please wait…" : signup ? "Create account" : "Sign in" }}
+          <span aria-hidden="true">→</span>
+        </button>
+      </form>
+      <p class="auth-switch">
+        {{ signup ? "Already have an account?" : "New to FinanceOps?" }}
+        <a [routerLink]="signup ? '/login' : '/signup'">{{
+          signup ? "Sign in" : "Create an account"
+        }}</a>
+      </p>
+      @if (!signup) {
+        <div class="demo-box">
+          <strong>Try the demo</strong>
+          <p>
+            Maya · maya&#64;financeops.local<br />Omar ·
+            omar&#64;financeops.local
+          </p>
+          <p>Password: <code>Practice123!</code></p>
+          <small>Each account sees a different workspace.</small>
+        </div>
+      }
+    </div>
+  </section>
+</main>
