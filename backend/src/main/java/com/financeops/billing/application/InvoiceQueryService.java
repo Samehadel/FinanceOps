@@ -1,7 +1,7 @@
 package com.financeops.billing.application;
 
 import com.financeops.auth.contract.CurrentUser;
-import com.financeops.billing.application.port.BillingRecords;
+import com.financeops.billing.application.port.InvoiceRecords;
 import com.financeops.billing.domain.InvoiceCalculator;
 import com.financeops.billing.contract.BillingFacts.InvoiceView;
 import com.financeops.shared.domain.RecordNotFoundException;
@@ -16,10 +16,10 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class InvoiceQueryService {
     private final CurrentUser access;
-    private final BillingRecords records;
+    private final InvoiceRecords records;
     private final LocalDate referenceDate;
 
-    public InvoiceQueryService(CurrentUser access, BillingRecords records,
+    public InvoiceQueryService(CurrentUser access, InvoiceRecords records,
                                @Value("${financeops.reference-date}") LocalDate referenceDate) {
         this.access = access;
         this.records = records;

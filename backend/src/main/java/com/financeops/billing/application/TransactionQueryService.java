@@ -1,7 +1,7 @@
 package com.financeops.billing.application;
 
 import com.financeops.auth.contract.CurrentUser;
-import com.financeops.billing.application.port.BillingRecords;
+import com.financeops.billing.application.port.PaymentRecords;
 import com.financeops.billing.contract.BillingFacts.PaymentView;
 import com.financeops.shared.domain.RecordNotFoundException;
 import org.springframework.stereotype.Service;
@@ -12,9 +12,9 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class TransactionQueryService {
     private final CurrentUser access;
-    private final BillingRecords records;
+    private final PaymentRecords records;
 
-    public TransactionQueryService(CurrentUser access, BillingRecords records) {
+    public TransactionQueryService(CurrentUser access, PaymentRecords records) {
         this.access = access;
         this.records = records;
     }

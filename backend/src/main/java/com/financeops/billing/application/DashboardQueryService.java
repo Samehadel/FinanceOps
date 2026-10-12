@@ -1,7 +1,8 @@
 package com.financeops.billing.application;
 
 import com.financeops.auth.contract.CurrentUser;
-import com.financeops.billing.application.port.BillingRecords;
+import com.financeops.billing.application.port.CustomerRecords;
+import com.financeops.billing.application.port.WorkspaceRecords;
 import com.financeops.billing.contract.BillingFacts.Dashboard;
 import com.financeops.billing.contract.BillingFacts.InvoiceView;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,14 +17,16 @@ import java.util.function.Function;
 @Transactional(readOnly = true)
 public class DashboardQueryService {
     private final CurrentUser access;
-    private final BillingRecords records;
+    private final CustomerRecords customers;
+    private final WorkspaceRecords workspace;
     private final InvoiceQueryService invoices;
     private final LocalDate referenceDate;
 
-    public DashboardQueryService(CurrentUser access, BillingRecords records, InvoiceQueryService invoices,
+    public DashboardQueryService(CurrentUser access, CustomerRecords customers, WorkspaceRecords workspace, InvoiceQueryService invoices,
                                  @Value("${financeops.reference-date}") LocalDate referenceDate) {
         this.access = access;
-        this.records = records;
+        this.customers = customers;
+        this.workspace = workspace;
         this.invoices = invoices;
         this.referenceDate = referenceDate;
     }
@@ -33,9 +36,9 @@ public class DashboardQueryService {
         List<InvoiceView> authorized = invoices.all();
         BigDecimal overdue = authorized.stream().filter(InvoiceView::overdue)
             .map(InvoiceView::outstanding).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new Dashboard(records.workspaceName(tenantId), referenceDate, sum(authorized, InvoiceView::total),
+        return new Dashboard(workspace.workspaceName(tenantId), referenceDate, sum(authorized, InvoiceView::total),
             sum(authorized, InvoiceView::settled), sum(authorized, InvoiceView::pending),
-            sum(authorized, InvoiceView::outstanding), overdue, authorized.size(), records.customers(tenantId).size());
+            sum(authorized, InvoiceView::outstanding), overdue, authorized.size(), customers.customers(tenantId).size());
     }
 
     private BigDecimal sum(List<InvoiceView> records, Function<InvoiceView, BigDecimal> value) {
