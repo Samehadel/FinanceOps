@@ -4,12 +4,12 @@ import com.financeops.auth.contract.CurrentUser;
 import com.financeops.chat.domain.ChatMessage;
 import com.financeops.shared.domain.InvalidRequestException;
 import com.financeops.shared.domain.ServiceUnavailableException;
-import com.openai.client.OpenAIClient;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import java.util.ArrayList;
 import com.openai.errors.OpenAIException;
-import com.openai.models.ReasoningEffort;
-import com.openai.models.chat.completions.ChatCompletionCreateParams;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -17,7 +17,6 @@ import java.util.List;
 
 @Service
 public class ChatService {
-    private static final Logger log = LoggerFactory.getLogger(ChatService.class);
     private static final String INSTRUCTIONS = """
         You are the FinanceOps assistant in a fictional billing practice app.
         Help users understand invoices, payment statuses, outstanding balances,
@@ -33,52 +32,46 @@ public class ChatService {
         Reply in plain text, using short paragraphs or simple lists.
         """;
     private final CurrentUser currentUser;
-    private final OpenAIClient client;
+    private final ChatClient client;
     private final String apiKey;
-    private final String model;
 
-    public ChatService(CurrentUser currentUser, @Lazy OpenAIClient client,
-                       @Value("${financeops.chat.api-key}") String apiKey,
-                       @Value("${financeops.chat.model}") String model) {
+    public ChatService(CurrentUser currentUser, @Lazy ChatClient client,
+                       @Value("${financeops.chat.api-key}") String apiKey) {
         this.currentUser = currentUser;
         this.client = client;
         this.apiKey = apiKey;
-        this.model = model;
     }
 
     public String reply(List<ChatMessage> messages) {
-        currentUser.currentTenant();
+        String tenantId = currentUser.currentTenant();
         validate(messages);
         if (apiKey.isBlank()) {
             throw new ServiceUnavailableException("The assistant is not configured yet. Please try again after setup.");
         }
-        var request = ChatCompletionCreateParams.builder()
-            .model(model)
-            .store(false)
-            .reasoningEffort(ReasoningEffort.LOW)
-            .maxCompletionTokens(2048L)
-            .addSystemMessage(INSTRUCTIONS);
+        var history = new ArrayList<Message>();
         for (ChatMessage message : messages) {
-            if (message.role().equals("user")) {
-                request.addUserMessage(message.content());
-            } else {
-                request.addAssistantMessage(message.content());
-            }
+            history.add(message.role().equals("user")
+                ? new UserMessage(message.content()) : new AssistantMessage(message.content()));
         }
         try {
-            var response = client.chat().completions().create(request.build());
-            if (response.choices().isEmpty()) {
+            var response = client.prompt()
+                .system(INSTRUCTIONS)
+                .messages(history)
+                .advisors(advisors -> advisors.param("tenantId", tenantId))
+                .call().chatResponse();
+            if (response == null || response.getResult() == null) {
                 throw new ServiceUnavailableException("The assistant returned no reply. Please try again.");
             }
-            var choice = response.choices().getFirst();
-            if (!choice.finishReason().asString().equals("stop")) {
+            var result = response.getResult();
+            if (!"stop".equalsIgnoreCase(result.getMetadata().getFinishReason())) {
                 throw new ServiceUnavailableException("The assistant could not finish its reply. Try a shorter question.");
             }
-            return choice.message().content().filter(text -> !text.isBlank())
-                .orElseThrow(() -> new ServiceUnavailableException("The assistant returned no reply. Please try again."));
+            String text = result.getOutput().getText();
+            if (text == null || text.isBlank()) {
+                throw new ServiceUnavailableException("The assistant returned no reply. Please try again.");
+            }
+            return text;
         } catch (OpenAIException exception) {
-            // Do not log provider bodies, credentials, or conversation text.
-            log.warn("OpenAI chat request failed: {}", exception.getClass().getSimpleName());
             throw new ServiceUnavailableException("The assistant is temporarily unavailable. Please try again shortly.");
         }
     }

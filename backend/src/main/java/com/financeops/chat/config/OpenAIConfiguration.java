@@ -1,23 +1,30 @@
 package com.financeops.chat.config;
 
-import com.openai.client.OpenAIClient;
-import com.openai.client.okhttp.OpenAIOkHttpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import java.time.Duration;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.AdvisorParams;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
 
 @Configuration
 class OpenAIConfiguration {
-    /** Created on first chat call so billing remains available before a key is configured. */
-    @Bean(destroyMethod = "close")
+    /** Lazy initialization keeps billing available before an API key is configured. */
+    @Bean
     @Lazy
-    OpenAIClient openAIClient(@Value("${financeops.chat.api-key}") String apiKey) {
-        return OpenAIOkHttpClient.builder()
-            .apiKey(apiKey)
-            .timeout(Duration.ofSeconds(45))
-            .maxRetries(0)
+    ChatClient chatClient(@Value("${financeops.chat.api-key}") String apiKey,
+                          @Value("${financeops.chat.model}") String model) {
+        var options = OpenAiChatOptions.builder().model(model)
+            .store(false).reasoningEffort("low").maxCompletionTokens(2048)
+            .timeout(Duration.ofSeconds(45)).maxRetries(0).build();
+        var chatModel = OpenAiChatModel.builder().options(options.mutate().apiKey(apiKey).build()).build();
+        return ChatClient.builder(chatModel)
+            .defaultOptions(options.mutate())
+            .defaultAdvisors(new LlmLoggingAdvisor(apiKey))
+            .defaultAdvisors(AdvisorParams.toolCallingAdvisorAutoRegister(false))
             .build();
     }
 }
