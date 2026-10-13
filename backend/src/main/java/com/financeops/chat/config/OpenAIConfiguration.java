@@ -15,15 +15,20 @@ class OpenAIConfiguration {
     /** Lazy initialization keeps billing available before an API key is configured. */
     @Bean
     @Lazy
-    ChatClient chatClient(@Value("${financeops.chat.api-key}") String apiKey,
-                          @Value("${financeops.chat.model}") String model) {
-        var options = OpenAiChatOptions.builder().model(model)
-            .store(false).reasoningEffort("low").maxCompletionTokens(2048)
-            .timeout(Duration.ofSeconds(45)).maxRetries(0).build();
-        var chatModel = OpenAiChatModel.builder().options(options.mutate().apiKey(apiKey).build()).build();
+    ChatClient chatClient(@Value("${financeops.chat.model}") String model) {
+        var options = OpenAiChatOptions.builder()
+                .model(model)
+                .store(false)
+                .reasoningEffort("low")
+                .maxCompletionTokens(2048)
+                .timeout(Duration.ofSeconds(45))
+                .maxRetries(0)
+                .build();
+        var chatModel = OpenAiChatModel.builder()
+                .options(options)
+                .build();
         return ChatClient.builder(chatModel)
-            .defaultOptions(options.mutate())
-            .defaultAdvisors(new LlmLoggingAdvisor(apiKey))
+            .defaultAdvisors(new LlmLoggingAdvisor())
             .defaultAdvisors(AdvisorParams.toolCallingAdvisorAutoRegister(false))
             .build();
     }

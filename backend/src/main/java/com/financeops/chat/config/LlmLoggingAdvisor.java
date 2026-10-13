@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openai.core.ObjectMappers;
 import com.openai.errors.OpenAIServiceException;
+import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClientRequest;
@@ -13,6 +15,8 @@ import org.springframework.ai.chat.client.advisor.api.CallAdvisor;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisorChain;
 import org.springframework.ai.chat.metadata.DefaultUsage;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.util.StringUtils;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -21,28 +25,24 @@ import java.util.concurrent.TimeUnit;
 /** Logs each synchronous model call, including provider-reported usage when available. */
 final class LlmLoggingAdvisor implements CallAdvisor {
     private static final Logger log = LoggerFactory.getLogger(LlmLoggingAdvisor.class);
-    private static final ObjectMapper JSON = ObjectMappers.jsonMapper().copy()
-        .setSerializationInclusion(JsonInclude.Include.ALWAYS);
-    private final String apiKey;
+    private static final ObjectMapper JSON = ObjectMappers.jsonMapper().copy().setDefaultPropertyInclusion(JsonInclude.Include.ALWAYS);
 
-    LlmLoggingAdvisor(String apiKey) {
-        this.apiKey = apiKey;
-    }
 
     @Override
+    @NonNull
     public String getName() { return "LlmLoggingAdvisor"; }
 
     @Override
     public int getOrder() { return 0; }
 
     @Override
-    public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
+    @Nonnull
+    public ChatClientResponse adviseCall(ChatClientRequest request, @Nonnull CallAdvisorChain chain) {
         var context = new LinkedHashMap<String, Object>();
         context.put("callId", UUID.randomUUID().toString());
         context.put("provider", "openai");
         context.put("tenantId", request.context().get("tenantId"));
-        var options = (OpenAiChatOptions) request.prompt().getOptions();
-        context.put("model", options.getModel());
+        setOptionsContext(request, context);
         var payload = new LinkedHashMap<String, Object>();
         payload.put("messages", request.prompt().getInstructions().stream().map(message -> {
             var entry = new LinkedHashMap<String, Object>();
@@ -51,9 +51,6 @@ final class LlmLoggingAdvisor implements CallAdvisor {
             return entry;
         }).toList());
         // Explicit projection excludes credentials and HTTP headers from options.
-        payload.put("reasoningEffort", options.getReasoningEffort());
-        payload.put("maxCompletionTokens", options.getMaxCompletionTokens());
-        payload.put("store", options.getStore());
         var start = new LinkedHashMap<>(context);
         start.put("event", "llm.request");
         start.put("request", payload);
@@ -99,6 +96,29 @@ final class LlmLoggingAdvisor implements CallAdvisor {
         }
     }
 
+    private void setOptionsContext(ChatClientRequest request, LinkedHashMap<String, Object> context) {
+        var options = (OpenAiChatOptions) request.prompt().getOptions();
+        if (options == null) {
+            return;
+        }
+
+        if (StringUtils.hasText(options.getModel())) {
+            context.put("model", options.getModel());
+        }
+
+        if (StringUtils.hasText(options.getReasoningEffort())) {
+            context.put("reasoning", options.getReasoningEffort());
+        }
+
+        if (options.getMaxCompletionTokens() != null) {
+            context.put("maxCompletionTokens", options.getMaxCompletionTokens());
+        }
+
+        if (options.getStore() != null) {
+            context.put("store", options.getStore());
+        }
+    }
+
     private Map<String, Object> usage(JsonNode usage) {
         var counts = new LinkedHashMap<String, Object>();
         counts.put("inputTokens", usage == null ? null : usage.get("prompt_tokens"));
@@ -116,7 +136,6 @@ final class LlmLoggingAdvisor implements CallAdvisor {
     private void write(Map<String, Object> event, boolean failed) {
         try {
             String json = JSON.writeValueAsString(event);
-            if (!apiKey.isBlank()) json = json.replace(apiKey, "[REDACTED]");
             if (failed) log.warn("LLM {}", json);
             else log.info("LLM {}", json);
         } catch (Exception exception) {
