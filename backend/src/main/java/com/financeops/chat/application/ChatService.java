@@ -33,21 +33,15 @@ public class ChatService {
         """;
     private final CurrentUser currentUser;
     private final ChatClient client;
-    private final String apiKey;
 
-    public ChatService(CurrentUser currentUser, @Lazy ChatClient client,
-                       @Value("${financeops.chat.api-key}") String apiKey) {
+    public ChatService(CurrentUser currentUser, @Lazy ChatClient client) {
         this.currentUser = currentUser;
         this.client = client;
-        this.apiKey = apiKey;
     }
 
     public String reply(List<ChatMessage> messages) {
         String tenantId = currentUser.currentTenant();
         validate(messages);
-        if (apiKey.isBlank()) {
-            throw new ServiceUnavailableException("The assistant is not configured yet. Please try again after setup.");
-        }
         var history = new ArrayList<Message>();
         for (ChatMessage message : messages) {
             history.add(message.role().equals("user")
