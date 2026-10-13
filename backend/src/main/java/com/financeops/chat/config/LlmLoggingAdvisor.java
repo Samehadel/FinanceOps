@@ -38,6 +38,7 @@ final class LlmLoggingAdvisor implements CallAdvisor {
     public ChatClientResponse adviseCall(ChatClientRequest request, @Nonnull CallAdvisorChain chain) {
         var context = new LinkedHashMap<String, Object>();
         context.put("callId", UUID.randomUUID().toString());
+        context.put("provider", request.context().get("provider"));
         context.put("tenantId", request.context().get("tenantId"));
         setOptionsContext(request, context);
         var payload = new LinkedHashMap<String, Object>();

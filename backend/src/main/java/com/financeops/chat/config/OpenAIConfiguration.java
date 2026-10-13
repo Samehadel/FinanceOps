@@ -29,6 +29,7 @@ class OpenAIConfiguration {
                 .build();
         return ChatClient.builder(chatModel)
             .defaultAdvisors(new LlmLoggingAdvisor())
+            .defaultAdvisors(advisors -> advisors.param("provider", "openai"))
             .defaultAdvisors(AdvisorParams.toolCallingAdvisorAutoRegister(false))
             .build();
     }
