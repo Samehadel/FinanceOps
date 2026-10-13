@@ -1,10 +1,7 @@
 package com.financeops.chat.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.openai.core.ObjectMappers;
-import com.openai.errors.OpenAIServiceException;
 import jakarta.annotation.Nonnull;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -13,8 +10,9 @@ import org.springframework.ai.chat.client.ChatClientRequest;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisor;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisorChain;
-import org.springframework.ai.chat.metadata.DefaultUsage;
-import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.chat.metadata.EmptyUsage;
+import org.springframework.ai.chat.metadata.Usage;
+import org.jspecify.annotations.Nullable;
 import org.springframework.util.StringUtils;
 
 import java.util.LinkedHashMap;
@@ -25,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 /** Logs each synchronous model call, including provider-reported usage when available. */
 final class LlmLoggingAdvisor implements CallAdvisor {
     private static final Logger log = LoggerFactory.getLogger(LlmLoggingAdvisor.class);
-    private static final ObjectMapper JSON = ObjectMappers.jsonMapper().copy().setDefaultPropertyInclusion(JsonInclude.Include.ALWAYS);
+    private static final ObjectMapper JSON = new ObjectMapper().setDefaultPropertyInclusion(JsonInclude.Include.ALWAYS);
 
 
     @Override
@@ -40,7 +38,6 @@ final class LlmLoggingAdvisor implements CallAdvisor {
     public ChatClientResponse adviseCall(ChatClientRequest request, @Nonnull CallAdvisorChain chain) {
         var context = new LinkedHashMap<String, Object>();
         context.put("callId", UUID.randomUUID().toString());
-        context.put("provider", "openai");
         context.put("tenantId", request.context().get("tenantId"));
         setOptionsContext(request, context);
         var payload = new LinkedHashMap<String, Object>();
@@ -62,9 +59,7 @@ final class LlmLoggingAdvisor implements CallAdvisor {
             event.put("event", "llm.response");
             event.put("durationMs", elapsed(startedAt));
             var chat = response.chatResponse();
-            JsonNode nativeUsage = chat != null && chat.getMetadata().getUsage() instanceof DefaultUsage usage
-                ? JSON.valueToTree(usage.getNativeUsage()) : null;
-            event.put("usage", usage(nativeUsage));
+            event.put("usage", usage(chat == null ? null : chat.getMetadata().getUsage()));
             if (chat != null) {
                 event.put("responseId", chat.getMetadata().getId());
                 event.put("responseModel", chat.getMetadata().getModel());
@@ -87,17 +82,13 @@ final class LlmLoggingAdvisor implements CallAdvisor {
             event.put("errorType", exception.getClass().getSimpleName());
             event.put("usage", usage(null));
             event.put("response", null);
-            if (exception instanceof OpenAIServiceException providerException) {
-                event.put("httpStatus", providerException.statusCode());
-                event.put("response", providerException.body());
-            }
             write(event, true);
             throw exception;
         }
     }
 
     private void setOptionsContext(ChatClientRequest request, LinkedHashMap<String, Object> context) {
-        var options = (OpenAiChatOptions) request.prompt().getOptions();
+        var options = request.prompt().getOptions();
         if (options == null) {
             return;
         }
@@ -106,26 +97,44 @@ final class LlmLoggingAdvisor implements CallAdvisor {
             context.put("model", options.getModel());
         }
 
-        if (StringUtils.hasText(options.getReasoningEffort())) {
-            context.put("reasoning", options.getReasoningEffort());
+        if (options.getMaxTokens() != null) {
+            context.put("maxTokens", options.getMaxTokens());
         }
 
-        if (options.getMaxCompletionTokens() != null) {
-            context.put("maxCompletionTokens", options.getMaxCompletionTokens());
+        if (options.getTemperature() != null) {
+            context.put("temperature", options.getTemperature());
         }
 
-        if (options.getStore() != null) {
-            context.put("store", options.getStore());
+        if (options.getTopP() != null) {
+            context.put("topP", options.getTopP());
+        }
+
+        if (options.getTopK() != null) {
+            context.put("topK", options.getTopK());
+        }
+
+        if (options.getFrequencyPenalty() != null) {
+            context.put("frequencyPenalty", options.getFrequencyPenalty());
+        }
+
+        if (options.getPresencePenalty() != null) {
+            context.put("presencePenalty", options.getPresencePenalty());
+        }
+
+        if (options.getStopSequences() != null) {
+            context.put("stopSequences", options.getStopSequences());
         }
     }
 
-    private Map<String, Object> usage(JsonNode usage) {
+    private Map<String, Object> usage(@Nullable Usage usage) {
+        // EmptyUsage represents unavailable counts, rather than a measured zero.
+        boolean available = usage != null && !(usage instanceof EmptyUsage);
         var counts = new LinkedHashMap<String, Object>();
-        counts.put("inputTokens", usage == null ? null : usage.get("prompt_tokens"));
-        counts.put("outputTokens", usage == null ? null : usage.get("completion_tokens"));
-        counts.put("totalTokens", usage == null ? null : usage.get("total_tokens"));
-        counts.put("cachedInputTokens", usage == null ? null : usage.path("prompt_tokens_details").get("cached_tokens"));
-        counts.put("reasoningTokens", usage == null ? null : usage.path("completion_tokens_details").get("reasoning_tokens"));
+        counts.put("inputTokens", available ? usage.getPromptTokens() : null);
+        counts.put("outputTokens", available ? usage.getCompletionTokens() : null);
+        counts.put("totalTokens", available ? usage.getTotalTokens() : null);
+        counts.put("cachedInputTokens", available ? usage.getCacheReadInputTokens() : null);
+        counts.put("cacheWriteInputTokens", available ? usage.getCacheWriteInputTokens() : null);
         return counts;
     }
 
