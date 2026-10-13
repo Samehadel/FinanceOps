@@ -285,3 +285,16 @@ textarea::placeholder {
     font-size: 12px;
   }
 }
+
+.clear-history {
+  border: 1px solid #d9dee8;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.clear-history:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

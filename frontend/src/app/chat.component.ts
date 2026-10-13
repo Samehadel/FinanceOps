@@ -12,10 +12,11 @@ import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { ApiService, errorMessage } from "./api.service";
 import { ChatMessage } from "./models";
+import { ChatMarkdownComponent } from "./chat-markdown.component";
 
 @Component({
   selector: "app-chat",
-  imports: [FormsModule],
+  imports: [FormsModule, ChatMarkdownComponent],
   templateUrl: "./chat.component.html",
   styleUrl: "./chat.component.css",
 })
@@ -28,10 +29,42 @@ export class ChatComponent {
   messages = signal<ChatMessage[]>([]);
   draft = signal("");
   sending = signal(false);
+  loading = signal(true);
+  historyLoaded = signal(false);
+  clearing = signal(false);
   error = signal("");
 
   constructor() {
     afterNextRender(() => this.composer()?.nativeElement.focus());
+    void this.loadHistory();
+  }
+
+  async loadHistory(): Promise<void> {
+    this.loading.set(true);
+    this.error.set("");
+    try {
+      this.messages.set(await this.api.chatHistory());
+      this.historyLoaded.set(true);
+      this.scrollToLatest();
+    } catch (error) {
+      this.error.set(errorMessage(error));
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async clearHistory(): Promise<void> {
+    if (this.sending() || this.loading() || this.clearing()) return;
+    this.clearing.set(true);
+    this.error.set("");
+    try {
+      await this.api.clearChat();
+      this.messages.set([]);
+    } catch (error) {
+      this.error.set(errorMessage(error));
+    } finally {
+      this.clearing.set(false);
+    }
   }
 
   onKeydown(event: KeyboardEvent): void {
@@ -43,7 +76,15 @@ export class ChatComponent {
 
   async submit(): Promise<void> {
     const content = this.draft().trim();
-    if (this.sending() || !content || content.length > 4000) return;
+    if (
+      this.sending() ||
+      this.loading() ||
+      this.clearing() ||
+      !this.historyLoaded() ||
+      !content ||
+      content.length > 4000
+    )
+      return;
     const previous = this.messages();
     const messages: ChatMessage[] = [...previous, { role: "user", content }];
     this.messages.set(messages);
@@ -52,8 +93,7 @@ export class ChatComponent {
     this.sending.set(true);
     this.scrollToLatest();
     try {
-      // Keep the most recent ten complete turns plus this question.
-      const response = await this.api.chat(messages.slice(-21));
+      const response = await this.api.chat(content);
       this.messages.update((items) => [
         ...items,
         { role: "assistant", content: response.reply },

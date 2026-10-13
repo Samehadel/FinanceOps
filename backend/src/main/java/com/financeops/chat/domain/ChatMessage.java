@@ -1,5 +1,5 @@
 package com.financeops.chat.domain;
 
-/** Conversation input; only user and assistant roles are accepted by the application. */
+/** A saved conversation message with a user or assistant role. */
 public record ChatMessage(String role, String content) {
 }

@@ -7,9 +7,16 @@
         ><small>A clearer view of billing</small>
       </div>
     </div>
-    <span class="chat-mode"
-      ><span aria-hidden="true"></span> Text conversation</span
+    <button
+      type="button"
+      class="clear-history"
+      (click)="clearHistory()"
+      [disabled]="
+        loading() || sending() || clearing() || messages().length === 0
+      "
     >
+      {{ clearing() ? "Clearing…" : "Clear history" }}
+    </button>
   </div>
 
   <div
@@ -21,7 +28,10 @@
     aria-relevant="additions"
     [attr.aria-busy]="sending()"
   >
-    @if (messages().length === 0) {
+    @if (loading()) {
+      <p role="status">Loading conversation…</p>
+    }
+    @if (!loading() && messages().length === 0) {
       <div class="chat-welcome">
         <span class="welcome-mark" aria-hidden="true">✦</span>
         <p class="eyebrow">A LITTLE HELP, RIGHT HERE</p>
@@ -48,7 +58,14 @@
           <p class="message-author">
             {{ message.role === "user" ? "You" : "FinanceOps assistant" }}
           </p>
-          <div class="message-text">{{ message.content }}</div>
+          @if (message.role === "assistant") {
+            <app-chat-markdown
+              class="message-text"
+              [content]="message.content"
+            />
+          } @else {
+            <div class="message-text">{{ message.content }}</div>
+          }
         </div>
       </article>
     }
@@ -69,7 +86,14 @@
   <div class="composer-area">
     @if (error()) {
       <div class="error chat-error" role="alert">
-        {{ error() }} Your question is saved below.
+        {{ error() }}
+        <button
+          type="button"
+          (click)="loadHistory()"
+          [disabled]="loading() || sending() || clearing()"
+        >
+          Reload history
+        </button>
       </div>
     }
     <form class="chat-composer" (ngSubmit)="submit()">
@@ -84,14 +108,20 @@
         [ngModel]="draft()"
         (ngModelChange)="draft.set($event)"
         (keydown)="onKeydown($event)"
-        [disabled]="sending()"
+        [disabled]="sending() || loading() || clearing() || !historyLoaded()"
         aria-describedby="composer-help"
       ></textarea>
       <button
         type="submit"
         class="send-button"
         aria-label="Send message"
-        [disabled]="sending() || !draft().trim()"
+        [disabled]="
+          sending() ||
+          loading() ||
+          clearing() ||
+          !historyLoaded() ||
+          !draft().trim()
+        "
       >
         <svg
           width="20"
@@ -114,7 +144,7 @@
     </div>
     <p class="chat-disclaimer">
       AI can make mistakes. Check amounts against your billing records. This
-      conversation clears when you leave this page.
+      conversation is saved to your account until you clear its history.
     </p>
   </div>
 </section>

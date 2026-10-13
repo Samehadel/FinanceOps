@@ -16,11 +16,20 @@ export class ApiService {
     return firstValueFrom(this.http.get<T>("/api" + path));
   }
 
-  async chat(messages: ChatMessage[]): Promise<ChatResponse> {
+  async chat(content: string): Promise<ChatResponse> {
     await this.get("/auth/csrf");
     return firstValueFrom(
-      this.http.post<ChatResponse>("/api/chat", { messages }),
+      this.http.post<ChatResponse>("/api/chat", { content }),
     );
+  }
+
+  chatHistory(): Promise<ChatMessage[]> {
+    return this.get<ChatMessage[]>("/chat");
+  }
+
+  async clearChat(): Promise<void> {
+    await this.get("/auth/csrf");
+    await firstValueFrom(this.http.delete<void>("/api/chat"));
   }
 
   async restore(): Promise<boolean> {
