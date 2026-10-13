@@ -31,11 +31,12 @@ This foundation is distinct from completion of F01's chat and model criteria.
 
 - Requirements: [F01 specification](features/F01-read-only-billing-chat.md)
 - Scenarios: F01-S01 through F01-S09
-- Status: non-AI foundation implemented; AI chat and model evaluation remain outstanding
+- Status: foundation and text-only chat present in source; record-grounded chat and full AI acceptance evaluation remain outstanding
+- Current task: [F01-T01 — Trusted invoice explanation](features/F01-task-01-grounded-invoice.md); design proposal pending. Scenario focus: S01, S03–S06, S09, and F01-T01-S01 (forged client history).
 
 ## Open decisions
 
-- LLM provider and intended model.
+- Source now contains OpenAI configuration and a default model setting; effective runtime model and successful provider behavior remain unverified in this review.
 - Dependencies are pinned for the base app; JDK 25 is selected.
 - Authentication is implemented using Spring Security sessions and server-owned tenant membership.
 - Authorized data retrieval is implemented; model context construction remains undecided.
@@ -70,6 +71,14 @@ Update this record after reviews. Separate observed results from design intentio
 - Outstanding: complete AC01–AC08 across S01–S09; repeated real-model runs, redacted evidence, financial immutability, latency and usage/cost records. Existing evaluation plan still applies; include S09 as a controlled-stub run.
 - Learning pack resources were opened in official Spring AI and OWASP documentation. Next learner evidence: explain the settled-versus-pending contradiction and propose where the backend rejects it.
 - Later-feature specifications, test automation and payment sandbox behavior remain deferred. No application code was generated or changed by this review.
+
+## First task assignment — October 13, 2026
+
+- Inspected current ChatService, Angular chat component, billing contracts and logging advisor. Text-only chat and model integration exist in source; chat does not retrieve billing facts and returns unvalidated plain text. No runtime/model checks were run.
+- Assigned F01-T01, reusing the existing chat and tenant-scoped query foundation. Engineer proposes the approach before implementation. No application code was changed.
+- Identified a concrete AC08 gap: routine INFO logs currently include full model request/response content. Content exclusion is required within this task before billing grounding is demonstrated.
+- Learning coverage target: practice objectives 1, 3, 4, 5, 6 and 15, record evidence/citations for objective 2 and diagnostics for 9/13. No new demonstrated learning coverage is claimed.
+- Remaining decisions: invoice selection, minimal context, response contract, semantic/evidence checks, controlled responses and failure UX. Task evidence and full F01 operational/deadline/isolation evaluation are outstanding.
 
 ## Deferred work
 

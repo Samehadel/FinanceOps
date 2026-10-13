@@ -1,12 +1,12 @@
 package com.financeops.chat.config;
 
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import java.time.Duration;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.AdvisorParams;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 
@@ -19,7 +19,7 @@ class OpenAIConfiguration {
         var options = OpenAiChatOptions.builder()
                 .model(model)
                 .store(false)
-                .reasoningEffort("low")
+                .reasoningEffort("none")
                 .maxCompletionTokens(2048)
                 .timeout(Duration.ofSeconds(45))
                 .maxRetries(0)
@@ -28,9 +28,8 @@ class OpenAIConfiguration {
                 .options(options)
                 .build();
         return ChatClient.builder(chatModel)
-            .defaultAdvisors(new LlmLoggingAdvisor())
+            .defaultAdvisors(new SimpleLoggerAdvisor())
             .defaultAdvisors(advisors -> advisors.param("provider", "openai"))
-            .defaultAdvisors(AdvisorParams.toolCallingAdvisorAutoRegister(false))
             .build();
     }
 }

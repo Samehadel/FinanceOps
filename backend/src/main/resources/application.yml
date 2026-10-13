@@ -28,3 +28,10 @@ financeops:
   chat:
     api-key: ${OPENAI_API_KEY:}
     model: ${OPENAI_MODEL:gpt-5.4-nano}
+
+# Logging
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor: DEBUG
+    org.springframework.ai.model.tool.DefaultToolCallingManager: DEBUG
+
