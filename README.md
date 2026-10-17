@@ -71,6 +71,14 @@ npm --prefix frontend run format
 
 No automated test suite is included, following the learning scope. Repeatable manual scenarios and observed results are in [docs/base-app-verification.md](docs/base-app-verification.md).
 
+### Inspect metrics
+
+Open `http://localhost:8080/actuator/metrics` directly on the backend port. The Angular development proxy forwards only `/api`. `/actuator/metrics` lists registered metric names; `/actuator/metrics/{name}` shows a metric's measurements and tags. Prometheus scrapes `/actuator/prometheus`.
+
+AI metrics are registered when chat executes, so send a chat message and refresh the list. The manually built AI model and client use Boot's observation and meter registries; Spring AI's chat observation configuration also records provider token usage when available. Look for `spring.ai.chat.client`, `spring.ai.advisor`, and `gen_ai.client.operation` metrics.
+
+Application properties are configuration, not metric names. The `env` and `configprops` Actuator endpoints are not exposed by this app; the exposed endpoints are `health`, `metrics`, and `prometheus`.
+
 ## What you can practice
 
 - Login, signup, logout, session restoration, and profile inspection.
