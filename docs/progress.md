@@ -32,7 +32,7 @@ This foundation is distinct from completion of F01's chat and model criteria.
 - Requirements: [F01 specification](features/F01-read-only-billing-chat.md)
 - Scenarios: F01-S01 through F01-S09
 - Status: foundation and text-only chat present in source; record-grounded chat and full AI acceptance evaluation remain outstanding
-- Current task: [F01-T01 — Trusted invoice explanation](features/F01-task-01-grounded-invoice.md); design proposal pending. Scenario focus: S01, S03–S06, S09, and F01-T01-S01 (forged client history).
+- Current task: [F01-T02 — Bounded timeout](features/F01-task-02-bounded-timeout.md); design proposal pending. Scenario focus: F01-S07 and F01-T02-S01–S04. T01 is learner-reported done; completion remains unverified because the learner requested progression without review.
 
 ## Open decisions
 

@@ -1,4 +1,7 @@
 spring:
+  docker:
+    compose:
+      enabled: false
   application:
     name: financeops
   datasource:
@@ -35,3 +38,8 @@ logging:
     org.springframework.ai.chat.client.advisor: DEBUG
     org.springframework.ai.model.tool.DefaultToolCallingManager: DEBUG
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus

@@ -2,15 +2,15 @@
 
 A local learning app built with Spring Boot, Spring Security, Spring Data JPA, PostgreSQL, and Angular. Billing works without an API key; the optional AI assistant uses OpenAI.
 
-## Run with Docker
+## Run with Docker (deployment configuration)
 
 From this directory, with Docker Desktop running:
 
 ```sh
-docker compose up --build -d
+docker compose -f compose.yaml -f compose.deploy.yaml up --build -d
 ```
 
-Open **http://localhost:4200**. The first build downloads dependencies and images. PostgreSQL health gates backend startup; allow a few seconds for migrations and account creation before signing in. Watch startup with `docker compose logs -f backend`.
+Open **http://localhost:4200**. The first build downloads dependencies and images. PostgreSQL health gates backend startup; allow a few seconds for migrations and account creation before signing in. Watch startup with `docker compose -f compose.yaml -f compose.deploy.yaml logs -f backend`.
 
 | Account | Email | Default password | Workspace |
 | --- | --- | --- | --- |
@@ -19,25 +19,33 @@ Open **http://localhost:4200**. The first build downloads dependencies and image
 
 These are fictional local practice credentials. Signup creates a separate workspace with a starter $120 invoice and $70 settled payment, plus the [expanded practice dataset](docs/practice-dataset.md) of seven additional customers, ten invoices, and eighteen payments. It cannot enroll an account into an existing tenant or choose an elevated role.
 
-`docker compose stop` stops the application and preserves data. `docker compose down` removes its containers and preserves the named database volume.
+Use `docker compose -f compose.yaml -f compose.deploy.yaml stop` to stop the containerized application while preserving data. Use the same file options with `down` to remove its containers while preserving the named database volume.
 
 ### Reset practice data
 
 This deletes this project's local database, including accounts created through signup:
 
 ```sh
-docker compose down -v
-docker compose up --build -d
+docker compose -f compose.yaml -f compose.deploy.yaml down -v
+docker compose -f compose.yaml -f compose.deploy.yaml up --build -d
 ```
 
 Flyway recreates the schema and fixtures; the backend creates Maya and Omar with BCrypt passwords. Financial read endpoints never modify those fixtures. Existing demo passwords are not overwritten on restart.
 
 ## Run during development
 
+The default Compose file starts only PostgreSQL and Prometheus. Backend startup does not manage Docker containers. Start dependencies manually, then run `com.financeops.FinanceOpsApplication` from your IDE (or use Maven below). For the frontend, create an npm run configuration for `frontend/package.json` with script `start`.
+
+If backend/frontend containers from the previous setup are still running, stop just those containers before starting the IDE processes:
+
+```sh
+docker compose -f compose.yaml -f compose.deploy.yaml stop frontend backend
+```
+
 Requirements: JDK 25, Maven 3.9.12+, Node 22.22.3+ within 22.x or Node 24.15+ within 24.x (Angular's supported ranges), and Docker.
 
 ```sh
-docker compose up -d db
+docker compose up -d
 mvn -f backend/pom.xml spring-boot:run
 ```
 
@@ -51,7 +59,7 @@ npm start
 
 Open **http://127.0.0.1:4200**. Angular proxies `/api` to the backend at port 8080. In the Docker setup, Nginx provides the same proxy and supports direct Angular route navigation. Do not mix localhost and 127.0.0.1 during a session: cookies are host-specific.
 
-PostgreSQL is available at `localhost:5433`, database/user `financeops`, local password `local-practice-only`. It is bound to loopback. Use your database client to inspect tables or practice queries. See `.env.example` for optional local overrides. When running the backend directly, its environment variables must be exported in that terminal; Compose reads `.env` for its containers. Set `SESSION_COOKIE_SECURE=true` if later serving the backend over HTTPS.
+PostgreSQL is available at `localhost:5433`, database/user `financeops`, local password `local-practice-only`. It is bound to loopback. Use your database client to inspect tables or practice queries. See `.env.example` for optional local overrides. When running the backend from the IDE, set environment variables in its private run configuration. For Maven, export them in that terminal; Compose reads `.env` for its containers. Set `SESSION_COOKIE_SECURE=true` if later serving the backend over HTTPS.
 
 Build checks:
 
@@ -75,13 +83,13 @@ No automated test suite is included, following the learning scope. Repeatable ma
 
 ### Configure AI chat
 
-Set `OPENAI_API_KEY` in the backend environment and restart the backend. For Docker, add it to the ignored `.env` file and run `docker compose up --build -d`. For a direct Maven launch, export it in that terminal before `mvn -f backend/pom.xml spring-boot:run`. The key is never sent to the frontend.
+Set `OPENAI_API_KEY` in the backend environment and restart the backend. For Docker, add it to the ignored `.env` file and run `docker compose -f compose.yaml -f compose.deploy.yaml up --build -d`. For a direct Maven launch, export it in that terminal before `mvn -f backend/pom.xml spring-boot:run`. The key is never sent to the frontend.
 
 `OPENAI_MODEL` defaults to `gpt-5.4-nano`, an inexpensive model with function calling support ([official model details](https://developers.openai.com/api/docs/models/gpt-5.4-nano)). Chat uses Spring AI 2.0.1’s configured `ChatClient` and `OpenAiChatModel` (backed by the official OpenAI Java SDK) with low reasoning effort, a 2,048-token completion limit, a 45-second timeout, and no automatic retries. No tools are registered or called. Each submission makes one direct Chat Completions call with storage disabled.
 
 The assistant explains billing concepts and details supplied in the conversation. It cannot retrieve workspace records or execute financial actions. Each account has one conversation stored in PostgreSQL, restored after navigation, reload, and signing in again. Clear history permanently removes that account’s conversation. Every LLM call includes the entire saved conversation plus the new question; there is no history truncation or RAG retrieval. Provider context limits still apply, and failed calls do not save a partial turn. The UI limits each question to 4,000 characters. Missing configuration and provider failures return a recoverable 503 without exposing provider details.
 
-A `CallAdvisor` logs every OpenAI call as compact JSON events in the backend logs: `llm.request` followed by `llm.response` (INFO) or `llm.failure` (WARN), linked by `callId`. Request logs contain the complete system prompt, conversation history, and common Spring AI generation options. Response logs contain the Spring AI response content and metadata, response ID, elapsed milliseconds, and reported input, output, total, cache read, and cache write tokens. Input counts cover the full prompt and history. Provider-specific reasoning token details are not exposed by Spring AI’s common `Usage` interface. Missing usage and failed calls use `null` token counts rather than estimates. These logs contain conversation text. The advisor logs an explicit projection of common options and does not access API keys, authorization headers, native provider usage, or provider error bodies. View them in the backend terminal or with `docker compose logs -f backend`.
+A `CallAdvisor` logs every OpenAI call as compact JSON events in the backend logs: `llm.request` followed by `llm.response` (INFO) or `llm.failure` (WARN), linked by `callId`. Request logs contain the complete system prompt, conversation history, and common Spring AI generation options. Response logs contain the Spring AI response content and metadata, response ID, elapsed milliseconds, and reported input, output, total, cache read, and cache write tokens. Input counts cover the full prompt and history. Provider-specific reasoning token details are not exposed by Spring AI’s common `Usage` interface. Missing usage and failed calls use `null` token counts rather than estimates. These logs contain conversation text. The advisor logs an explicit projection of common options and does not access API keys, authorization headers, native provider usage, or provider error bodies. View them in the backend terminal or with `docker compose -f compose.yaml -f compose.deploy.yaml logs -f backend`.
 
 All amounts are USD. Only **SETTLED** payments reduce balances. Backend calculations use `BigDecimal` and PostgreSQL `numeric(14,2)`. The reference date is fixed at **2026-10-12**, matching the F01 fixtures. A due date equal to the reference date is not overdue. Missing settlement dates remain unknown.
 
@@ -92,7 +100,8 @@ Maya has extra practice records: an overdue invoice, a paid invoice, and a faile
 - `backend/`: a [modular monolith](docs/backend-architecture.md) with closed authentication, billing, and shared modules; separate HTTP, application, domain, and persistence layers.
 - `backend/src/main/resources/db/migration/`: versioned schema and fictional financial fixtures.
 - `frontend/`: standalone Angular components, route protection, and responsive screens.
-- `compose.yaml`: PostgreSQL, backend, and Angular/Nginx containers.
+- `compose.yaml`: local PostgreSQL and Prometheus dependencies.
+- `compose.deploy.yaml`: backend and Angular/Nginx containers, with Prometheus targeting the containerized backend.
 
 | Method | Endpoint | Behavior |
 | --- | --- | --- |

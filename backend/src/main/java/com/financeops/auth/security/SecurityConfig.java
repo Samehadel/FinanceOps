@@ -19,7 +19,12 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.spa())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/csrf", "/api/auth/login", "/api/auth/signup", "/api/health", "/error").permitAll()
+                .requestMatchers("/api/auth/csrf",
+                        "/api/auth/login",
+                        "/api/auth/signup",
+                        "/api/health",
+                        "/error",
+                        "/actuator/**").permitAll()
                 .anyRequest().authenticated())
             .formLogin(form -> form
                 .loginProcessingUrl("/api/auth/login")
